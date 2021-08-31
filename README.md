@@ -1,6 +1,6 @@
 # Sports Field Homography with PyTorch
 
-![chart](https://disk.yandex.ru/i/xXiqgO1Le5qFLA)
+![chart](https://github.com/darkAlert/sports-field-homography/blob/master/assets/CourtReconstructionChart.png)
 
 *Sports Field Homography* is designed to predict the homography of sports fields such as a basketball court or soccer/football pitch. This repository implements an end-to-end model consisting of the UNET network, the output of which is connected to the Spatial Transformer Network (STN). First, the UNET segments the court area and outputs its mask. The predicted mask is then fed to the STN, which predicts the homography that can be used to reconstruct the court geometry.
 
