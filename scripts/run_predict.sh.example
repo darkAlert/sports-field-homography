@@ -1,0 +1,61 @@
+#!/bin/bash
+: '
+Makes predictions for given data using given model, performs post-processing and saves the results
+'
+
+# Path to model:
+model_path=/home/ubuntu/checkpoints/NCAA+v6-640x360-aug_unet-resnet34-deconv-mask_ce-l1-rrmse-focal_2/CP_epoch8.pth
+
+# Images (img_dir) or video (video_path) can be used as input data:
+img_dir=/home/ubuntu/data/frames/2021_01_20_Colorado_at_Washington/
+#video_path=/home/ubuntu/data/video/2021_01_20_Colorado_at_Washington.mp4
+
+# Destination directory where outputs will be saved:
+dst_dir=/home/ubuntu/preds/2021_01_20_Colorado_at_Washington/
+
+# The following output keys can be used in req_outputs:
+#   theta       : outputs the predicted homography matrix
+#   segm_mask   : outputs the predicted segmentation mask of the court
+#   warp_mask   : outputs the court mask obtained by warping using predicted homography
+#   poi         : outputs points of interest for the court obtained by warping using predicted homography
+#   consistency : outputs a consistency score that shows how accurately homography has been predicted
+#   debug       : outputs additional debug information
+req_outputs=warp_mask,theta,consistency,poi,debug
+#req_outputs=theta,consistency     # use this if you only need homography matrix and confidence score
+
+# Image type of the predicted mask. Can be [bin / gray / rgb]:
+mask_type=gray
+
+# File format in which the predicted mask will be saved. Can be [png / pickle]:
+mask_save_format=pickle
+
+# Image size of the predicted mask:
+out_width=1280
+out_height=720
+
+# Batch size:
+batchsize=15
+
+
+if [[ -v img_dir ]]
+then
+  # Use images:
+  python3 predict.py --load ${model_path} \
+                     --dst_dir ${dst_dir} \
+                     --req_outputs ${req_outputs} \
+                     --mask_type ${mask_type} \
+                     --mask_save_format ${mask_save_format} \
+                     --batchsize ${batchsize} \
+                     --out_size ${out_width} ${out_height} \
+                     --img_dir ${img_dir}
+else
+  # or use video:
+  python3 predict.py --load ${model_path} \
+                     --dst_dir ${dst_dir} \
+                     --req_outputs ${req_outputs} \
+                     --mask_type ${mask_type} \
+                     --mask_save_format ${mask_save_format} \
+                     --batchsize ${batchsize} \
+                     --out_size ${out_width} ${out_height} \
+                     --video_path ${video_path}
+fi

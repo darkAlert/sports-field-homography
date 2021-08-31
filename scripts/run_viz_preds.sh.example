@@ -1,0 +1,28 @@
+#!/bin/bash
+### Make vizialization for given predictions ###
+
+# Path to video:
+video_path=/home/ubuntu/data/video/2021_01_20_Colorado_at_Washington.mp4
+
+# Path to JSON containing predictions:
+preds_path=/home/ubuntu/preds/2021_01_20_Colorado_at_Washington/preds.json
+
+# Path to directory containing the predicted mask of the court:
+masks_path=/home/ubuntu/preds/2021_01_20_Colorado_at_Washington/segm_mask.pkl
+
+# Destination directory where outputs will be saved:
+dst_dir=/home/ubuntu/viz/2021_01_20_Colorado_at_Washington/
+
+# FPS of input video:
+fps=30
+
+score_threshold=0.17
+overlay_threshold=0.35
+
+python3 viz_preds.py --video_path ${video_path} \
+                     --preds_path ${preds_path} \
+                     --masks_path ${masks_path} \
+                     --dst_dir ${dst_dir} \
+                     --fps ${fps} \
+                     --score_threshold ${score_threshold}\
+                     --overlay_threshold ${overlay_threshold}
