@@ -1,0 +1,62 @@
+val_names: ['NahziahCarter_11_SpotUp_Offense_2019-2020_NCAAM_v2', 'NicoMannion_1_Isolation_Offense_2019-2020_NCAAM', '2020_11_26_Villanova_at_ArizonaState', '2020_12_03_VirginiaMilitary_at_VirginiaTech']
+img_dir: '/home/ubuntu/data/court_segm/NCAA+v5/frames/'
+mask_dir: '/home/ubuntu/data/court_segm/NCAA+v5/masks/'
+anno_dir: '/home/ubuntu/data/court_segm/NCAA+v5/anno/'
+anno_keys: ['poi', 'reproj_mse']
+only_ncaam: False
+court_img: '/home/ubuntu/builds/BoostCourtReconstruction/assets/mask_ncaa_v4_nc4_m_onehot.png'
+court_poi: '/home/ubuntu/builds/BoostCourtReconstruction/assets/template_ncaa_v4_points.json'
+court_size: [640,360]
+
+_load: '/home/ubuntu/build/BoostCourtReconstruction/checkpoints/pretrain/pre_NCAAMv3-640x360_aug-app_nc4+3-deconv-resnet50-ce_segm-only/last.pth'
+_load: '/home/ubuntu/build/BoostCourtReconstruction/checkpoints/pretrain/pre_NCAAMv3-640x360_aug-app_nc4+3-deconv-resnet34-ce_segm-only/last.pth'
+_load: '/home/ubuntu/build/BoostCourtReconstruction/checkpoints/pretrain/pre_NCAAMv3-640x360_aug-app_nc4+3-bilinear-resnet34-ce_segm-only/last.pth'
+
+cp_dir: 'checkpoints/NCAAv4+-640x360-s160x90_aug_nc4+3-deconv-resnet18-psw-ce0-mse-rrmse/'
+log_dir: 'runs/runs_v5/NCAAv4+-640x360-s160x90_aug_nc4+3-deconv-resnet18-psw-ce0-mse-rrmse/'
+
+opt: 'RMSprop'
+lr: 0.0001
+weight_decay: 0.000001
+epochs: 8
+batchsize: 26
+target_size: [640,360]
+
+use_unet: True
+unet_bilinear: False
+mask_classes: 4
+unet_size: [640,360]
+
+use_resnet: True
+resnet_name: 'resnet34'
+resnet_input: 'img+mask'
+warp_mask: True
+warp_size: [640,360]
+resnet_pretrained: '/home/ubuntu/build/BoostCourtReconstruction/assets/pretrained/resnet18-5c106cde.pth'
+_resnet_pretrained: '/home/ubuntu/build/BoostCourtReconstruction/assets/pretrained/resnet34-333f7ec4.pth'
+_resnet_pretrained: '/home/ubuntu/build/BoostCourtReconstruction/assets/pretrained/resnet50-19c8e357.pth'
+
+segm_loss: 'focal'
+rec_loss: 'MSE'
+reproj_loss: 'RRMSE'
+consist_loss: 'focal'
+consist_start_iter: 25000
+seg_lambda: 1
+rec_lambda: 1
+reproj_lambda: 8
+consist_lambda: 1
+
+aug:
+   apperance:
+      jitter:
+         brightness: 0.35
+         contrast: 0.35
+         saturation: 0.25
+         hue: 0.25
+      blur: 5
+   geometric:
+      _scale: [0.5, 1.0]
+      hflip: 0.5
+
+viz: True
+version: 'v2'
