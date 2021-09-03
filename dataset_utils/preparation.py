@@ -23,7 +23,7 @@ from multiprocessing import Process, Queue, cpu_count
 from queue import Empty
 
 
-FOOTBALL_PITCH_IGNORE_POINTS = [12, 13, 19, 20]
+FOOTBALL_PITCH_IGNORE_POINTS = [12, 13, 16, 19, 20]
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -53,13 +53,13 @@ def generate_requests(anno_dir : str):
 
         game_requests = {}
         for frame_id, values in game_anno.items():
-            if values['theta'] is not None:
-                game_requests[frame_id] = {
-                    'manual_poi': np.array(values['poi']),
-                    'poi': None,
-                    'theta': None,
-                    'rmse': None
-                }
+            # if values['theta'] is not None:
+            game_requests[frame_id] = {
+                'manual_poi': np.array(values['poi']),
+                'poi': None,
+                'theta': None,
+                'rmse': values['rmse'] if 'rmse' in values else None
+            }
 
         requests[name] = game_requests
 
