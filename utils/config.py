@@ -105,6 +105,8 @@ def get_training_args():
                         help='Learning rate')
     parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-8,
                         help='Weight decay')
+    parser.add_argument('--val_step_n', dest='val_step_n', type=int, default=None,
+                        help='Validation at each step n')
     parser.add_argument('--cp_dir', dest='cp_dir', type=str, default=None,
                         help='Path for saving checkpoints')
     parser.add_argument('--log_dir', dest='log_dir', type=str, default=None,

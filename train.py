@@ -40,7 +40,7 @@ def prepare_dataloader(img_dir, mask_dir, anno_dir, anno_keys, val_names,
     return train_loader, n_train, val_loader, n_val
 
 
-def train_net(net, device, train_loader, n_train, val_loader, batch_size,
+def train_net(net, device, train_loader, n_train, val_loader, batch_size, val_step_n,
               seg_loss, seg_lambda, rec_loss, rec_lambda, reproj_loss, reproj_lambda,
               consist_loss, consist_lambda, consist_start_iter,
               opt='RMSprop', epochs=5, lr=0.0001, w_decay=1e-8,
@@ -53,9 +53,12 @@ def train_net(net, device, train_loader, n_train, val_loader, batch_size,
     if logger is None:
         logger = logging
 
+    val_step_n = val_step_n if val_step_n is not None else int(n_train / batch_size) + 1
+
     logger.info(f'''# Starting training:
             Optimizer:       {opt}
             Epochs:          {epochs}
+            Val step:        {val_step_n}
             Batch size:      {batch_size}
             Learning rate:   {lr}
             Weight decay:    {w_decay}
@@ -211,7 +214,7 @@ def train_net(net, device, train_loader, n_train, val_loader, batch_size,
                 global_step += 1
 
                 # Validation step:
-                if global_step % (n_train // (5 * batch_size)) == 0:
+                if global_step % val_step_n == 0:
                     print('\nStarting validation...')
 
                     for tag, value in net.named_parameters():
@@ -411,6 +414,7 @@ if __name__ == '__main__':
                   n_train=n_train,
                   val_loader=val_loader,
                   batch_size=args.batchsize,
+                  val_step_n=args.val_step_n,
                   seg_loss=args.seg_loss,
                   seg_lambda = args.seg_lambda,
                   rec_loss=args.rec_loss,
