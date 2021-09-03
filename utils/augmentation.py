@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import torch
 from torchvision import transforms
@@ -14,11 +15,13 @@ class PoIHorizontalFlip(torch.nn.Module):
     """
     mapping = None
 
-    def __init__(self, p=0.5):
+    def __init__(self, p=0.5, mapping=None):
         super().__init__()
         self.p = p
-        if PoIHorizontalFlip.mapping is None:
+        if mapping is None:
             PoIHorizontalFlip.mapping = PoIHorizontalFlip.flipped_poi_mapping()
+        else:
+            PoIHorizontalFlip.mapping = mapping
 
     @staticmethod
     def flipped_poi_mapping():
@@ -141,9 +144,15 @@ def make_points_transform(aug):
     if 'scale' in aug:
         raise NotImplementedError
 
+    hflip_mapping = None
+    if 'poi_flip_map' in aug:
+        with open(aug['poi_flip_map'],'r') as f:
+            data = json.load(f)
+        hflip_mapping = torch.tensor(data['hflip'], dtype=torch.int8)
+
     if 'hflip' in aug:
         hflip = aug['hflip']
-        trans.append(PoIHorizontalFlip(hflip))
+        trans.append(PoIHorizontalFlip(hflip, hflip_mapping))
 
     assert len(trans) > 0, \
     'List of points transformations is empty. If you do not want '\
@@ -281,16 +290,6 @@ if __name__ == '__main__':
                 out_path = os.path.join(dst_dir, '{}_{}_{}.png'.format(iter, bi, i))
                 cv2.imwrite(out_path, overlaid)
 
-
-
     print ('Done!')
 
     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-
-
-
-
-
-
-
-

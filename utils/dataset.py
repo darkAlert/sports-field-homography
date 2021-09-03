@@ -190,7 +190,7 @@ class BasicDataset(Dataset):
     def __getitem__(self, i):
         name = self.ids[i]
         name_wo_ext = name[:name.rfind('.')]
-        sample = {'name': name_wo_ext}
+        sample = {'name': name_wo_ext, 'weight': 1.0}
 
         # Get image and mask paths:
         img_file = glob(os.path.join(self.img_dir, name))
