@@ -133,7 +133,7 @@ def process(num_data_workers=4):
 
     # Get params from command line:
     args = get_prediction_args()
-
+    print ('MODEL1', args.load)
     # Read config (yaml-file):
     if args.conf_path is None:
         args.conf_path = os.path.join(os.path.dirname(args.load), 'conf.yaml')
@@ -142,9 +142,8 @@ def process(num_data_workers=4):
 
     # Replace params with ones from yaml config (if it is given):
     if args.conf_path is not None:
-        print ('Reading params from {}...'.format(args.conf_path))
         conf = parse_config(args.conf_path)
-        ignore_keys = ['conf_path', 'batchsize', 'court_img', 'court_poi', 'img_dir', 'court_size', 'warp_size']
+        ignore_keys = ['conf_path', 'batchsize', 'court_img', 'court_poi', 'img_dir', 'court_size', 'warp_size', 'load']
         args = replace_args(args, conf, ignore_keys=ignore_keys)
 
     # Set resolution not lower than args.out_size:
