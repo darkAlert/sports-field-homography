@@ -75,9 +75,8 @@ class MaskReader:
         return cv2.imdecode(buf, cv2.IMREAD_UNCHANGED)
 
 
-def vizualize(video_path, preds_path, dst_dir, masks_path=None,
+def vizualize(video_path, preds_path, dst_dir, field_path, masks_path=None,
               mask_classes=4, out_size=(1280, 720), fps=30, score_threshold=0.1, overlay_threshold=None):
-    court_path = './assets/mask_ncaa_v4_nc4_m_onehot.png'
     chunk_size = 10000
     out_W, out_H = out_size[:]
 
@@ -92,7 +91,7 @@ def vizualize(video_path, preds_path, dst_dir, masks_path=None,
     n_frames = len(video)
 
     # Load the court template image:
-    court_img = open_court_template(court_path, mask_classes, (out_W, out_H), 1)
+    court_img = open_court_template(field_path, mask_classes, (out_W, out_H), 1)
     warper = kornia.HomographyWarper(out_H, out_W, mode='nearest', normalized_coordinates=True)
 
     temp_dir = os.path.join(dst_dir, '_temp')
@@ -141,7 +140,8 @@ def vizualize(video_path, preds_path, dst_dir, masks_path=None,
                 mask = cv2.resize(mask, (out_W, out_H), interpolation=cv2.INTER_NEAREST)
 
             # Draw:
-            if mask is not None and overlay_threshold is not None and score < overlay_threshold:
+            if mask is not None and overlay_threshold is None or \
+                    (overlay_threshold is not None and score < overlay_threshold):
                 frame = overlay(frame, mask)
             draw_text(frame, text='{:4f}'.format(score), pos=(15, 15), color=color, scale=0.75)
 
@@ -191,14 +191,15 @@ def get_args():
     parser.add_argument('--preds_path', type=str, default=None)
     parser.add_argument('--dst_dir', type=str, default=None)
     parser.add_argument('--masks_path', type=str, default=None)
+    parser.add_argument('--field_path', type=str, default='./assets/mask_ncaa_v4_nc4_m_onehot.png')
     parser.add_argument('--fps', type=int, default=30)
     parser.add_argument('--score_threshold', type=float, default=0.17)
-    parser.add_argument('--overlay_threshold', type=float, default=0.35)
+    parser.add_argument('--overlay_threshold', type=float, default=None)
 
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = get_args()
-    vizualize(args.video_path, args.preds_path, args.dst_dir, args.masks_path, fps=args.fps,
-              score_threshold=args.score_threshold, overlay_threshold=args.overlay_threshold)
+    vizualize(args.video_path, args.preds_path, args.dst_dir, args.field_path, args.masks_path,
+              fps=args.fps, score_threshold=args.score_threshold, overlay_threshold=args.overlay_threshold)
 
