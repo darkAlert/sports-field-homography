@@ -32,11 +32,11 @@ def test(model_path, batchsize=None, metric_img_size=None):
         args.segm_size = [640, 360]
         args.unet_size = [640, 360]
 
-    args.court_img = '/home/darkalert/builds/BoostCourtReconstruction/assets/mask_ncaa_v4_nc4_m_onehot.png'
-    args.court_poi = '/home/darkalert/BoostJob/docs/Court/NCAA_template_v4/template_ncaa_v4_points.json'
-    args.img_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/boost/datasets/court_segmentation/NCAAv2_test/frames/'
-    args.mask_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/boost/datasets/court_segmentation/NCAAv2_test/masks/'
-    args.anno_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/boost/datasets/court_segmentation/NCAAv2_test/anno/'
+    args.court_img = './assets/pitch_mask_nc4_hd_onehot.png'
+    args.court_poi = './assets/template_pitch_points.json'
+    args.img_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/sota/football/datasets/sota-pitch-test/frames/'
+    args.mask_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/sota/football/datasets/sota-pitch-test/masks/'
+    args.anno_dir = '/media/darkalert/c02b53af-522d-40c5-b824-80dfb9a11dbb/sota/football/datasets/sota-pitch-test/anno/'
     args.anno_keys = ['poi']
     args.log_path = os.path.join(os.path.dirname(model_path), 'test_scores.txt')
     args.resnet_pretrained = None
@@ -132,10 +132,16 @@ def test(model_path, batchsize=None, metric_img_size=None):
 
 
 if __name__ == "__main__":
-    name = 'NCAA+v7-640x360-aug_unet-resnet34-deconv-img+mask_ce-l1-rrmse-focal_2'
-    e_start, e_stop = 8, 4
+    names = []
+    # names.append('sota-pitch-v2-640x360-aug_unet-resnet34-deconv-mask_ce-l1-rrmse-focal_pre')
+    names.append('sota-pitch-v2-640x360-aug_unet-resnet34-deconv-img+mask_ce-l1-rrmse-focal_pre')
+    epochs = [3, 9, 10, 13, 14, 15]
     batchsize = 20
 
-    for i in range(e_start, e_stop-1,-1):
-        model_path = '/home/darkalert/builds/BoostCourtReconstruction/checkpoints/{}/CP_epoch{}.pth'.format(name, i)
-        test(model_path, batchsize=batchsize, metric_img_size=(640,360))
+    for name in names:
+        for e in epochs:
+            model_path = '/home/darkalert/builds/sports-field-homography/checkpoints/pitch/{}/CP_epoch{}.pth'.format(name, e)
+            if not os.path.exists(model_path):
+                print('Model file not found: {}'.format(model_path))
+                continue
+            test(model_path, batchsize=batchsize, metric_img_size=(640,360))

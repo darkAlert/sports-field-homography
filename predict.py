@@ -133,7 +133,7 @@ def process(num_data_workers=4):
 
     # Get params from command line:
     args = get_prediction_args()
-    print ('MODEL1', args.load)
+
     # Read config (yaml-file):
     if args.conf_path is None:
         args.conf_path = os.path.join(os.path.dirname(args.load), 'conf.yaml')
