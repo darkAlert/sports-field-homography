@@ -3,6 +3,7 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from pathlib import PurePath
 
 
 def read_version(path):
@@ -33,7 +34,7 @@ def read_log_v2(test_path, target_dataset=None, max_reproj_px=None):
             num_imgs = int(params['Test size'])
 
             if target_dataset is not None:
-                dataset = params['Images dir'].split('/')[-3]
+                dataset = PurePath(params['Images dir']).parts[-2]
                 if target_dataset != dataset:
                     print ('Log dataset does not match the target dataset. The log will be skipped!')
                     continue
@@ -230,9 +231,9 @@ def vizualize_metrics(src_dir, dst_dir=None, target_dataset=None, max_reproj_px=
 
 
 if __name__ == "__main__":
-    src_dir = '/home/darkalert/builds/BoostCourtReconstruction/checkpoints/'
-    target_dataset = 'NCAAv2_test'
-    dst_dir = '/home/darkalert/builds/BoostCourtReconstruction/checkpoints/charts/'
+    src_dir = '/home/darkalert/builds/sports-field-homography/checkpoints/pitch/'
+    target_dataset = 'sota-pitch-test'
+    dst_dir = '/home/darkalert/builds/sports-field-homography/checkpoints/pitch/charts/'
     dst_dir = os.path.join(dst_dir, target_dataset)
 
-    vizualize_metrics(src_dir, dst_dir, target_dataset, max_reproj_px=8, show=False)
+    vizualize_metrics(src_dir, dst_dir, target_dataset, max_reproj_px=None, show=False)
