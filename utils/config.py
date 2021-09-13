@@ -27,7 +27,7 @@ def make_base_parser():
                         help='Load config from a .yaml file')
     parser.add_argument('--viz', action='store_true', default=False,
                         help="Visualize the images as they are processed")
-    parser.add_argument('--batchsize', dest='batchsize', type=int, default=8,
+    parser.add_argument('--batchsize', '-bs', dest='batchsize', type=int, default=8,
                         help='Batch size')
 
     # Data:
@@ -71,7 +71,7 @@ def make_base_parser():
     return parser
 
 
-def get_training_args():
+def get_training_args(ret_parser=False):
     '''
     Create a list of the Reconstructor arguments for training
     '''
@@ -132,7 +132,7 @@ def get_training_args():
     parser.add_argument('--consist_lambda', type=float, default=1.0,
                         help='Weighting factor for Consistency loss')
 
-    return parser.parse_args()
+    return parser.parse_args() if ret_parser == False else parser
 
 
 def get_prediction_args():
@@ -158,6 +158,16 @@ def get_prediction_args():
 
     return parser.parse_args()
 
+
+def get_test_args():
+    parser = get_training_args(ret_parser=True)
+    parser.description = 'Test'
+    parser.add_argument('--test_epochs', dest='test_epochs', type=str, default=None,
+                        help='List of epochs to test, e.g. 1,2,5')
+    parser.add_argument('--metric_img_size', '-mis', dest='metric_img_size', default=(640, 360),
+                        help='Metric image size')
+
+    return parser.parse_args()
 
 def replace_args(args, conf, ignore_keys=None):
     '''
