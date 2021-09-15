@@ -34,10 +34,10 @@ def make_base_parser():
     parser.add_argument('--img_dir', dest='img_dir', type=str, default=None,
                         help='Path to dir containing training images')
     parser.add_argument('--court_img', dest='court_img', type=str,
-                        default='./assets/mask_ncaa_v4_nc4_m_onehot.png',
+                        default='./assets/pitch_mask_nc4_hd_onehot.png',
                         help='Path to court template image that will be projected by affine matrix')
     parser.add_argument('--court_poi', dest='court_poi', type=str,
-                        default='./assets/template_ncaa_v4_points.json',
+                        default='./assets/template_pitch_points.json',
                         help='Path to court points of interest. Using in reprojection error')
 
     # Resolutions:
