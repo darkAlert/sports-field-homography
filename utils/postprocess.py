@@ -62,7 +62,7 @@ def overlay(frame, mask):
     m = cv2.merge([m, m, m])
     overlaid = (frame & m) + mask*0.5 + (frame & (255 - m))*0.5
 
-    return overlaid.astype('uint8')
+    return np.ascontiguousarray(overlaid.astype('uint8'))
 
 def draw_text(img, text, pos, color=(255,255,255), scale=0.75, lineType=1, font=cv2.FONT_HERSHEY_COMPLEX_SMALL):
     '''
