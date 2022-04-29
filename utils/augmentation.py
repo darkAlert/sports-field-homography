@@ -3,6 +3,7 @@ import json
 import numpy as np
 import torch
 from torchvision import transforms
+from torchvision.transforms import functional as F
 from PIL import Image
 
 
@@ -65,6 +66,38 @@ class PoIHorizontalFlip(torch.nn.Module):
             return t_poi, t_nonzeros
 
         return poi, nonzeros
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(p={})'.format(self.p)
+
+
+class UVHorizontalFlip(torch.nn.Module):
+    """
+    UV horizontally flip the given UV-mask randomly with a given probability.
+    It also includes inverting the x-axis UV-mask values (new_value = 1 - value)
+
+    Args:
+        p (float): probability of the UV-mask being flipped. Default value is 0.5
+    """
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Image to be flipped.
+
+        Returns:
+            PIL Image or Tensor: Randomly flipped image.
+        """
+        if torch.rand(1) < self.p:
+            img_flip = F.hflip(img)
+            img_flip[0] = torch.gt(img_flip[0], 0).type(img_flip.type()) - img_flip[0]
+
+            return img_flip
+
+        return img
 
     def __repr__(self):
         return self.__class__.__name__ + '(p={})'.format(self.p)
@@ -133,6 +166,34 @@ def make_geometric_transform(aug, target_widht=1280, target_height=720, interpol
 
     return TF
 
+def make_uv_geometric_transform(aug, target_widht=1280, target_height=720, interpol=Image.NEAREST):
+    '''
+    Make geometric transformations for data augmentation
+    '''
+    assert aug is not None
+    trans = []
+
+    # Select transformations:
+    if 'scale' in aug:
+        scale = aug['scale']
+        ratio = target_widht / float(target_height)
+        trans.append(transforms.RandomResizedCrop((target_height,target_widht),
+                                                  scale=scale,
+                                                  ratio=(ratio,ratio),
+                                                  interpolation=interpol))
+    if 'hflip' in aug:
+        hflip = aug['hflip']
+        trans.append(UVHorizontalFlip(hflip))
+
+    assert len(trans) > 0, \
+    'List of geometric transformations is empty. If you do not want '\
+    'to use any geometric transformations, set aug[\'geometric\'] to None.'
+
+    # Compose transformations:
+    TF = transforms.Compose(trans)
+
+    return TF
+
 def make_points_transform(aug):
     '''
     Make points transformations for data augmentation
@@ -163,10 +224,11 @@ def make_points_transform(aug):
 
     return TF
 
-def apply_transforms(img, mask, poi=None, nonzeros=None,
+def apply_transforms(img, mask, uv=None, poi=None, nonzeros=None,
                      TF_apperance=None,
                      TF_img_geometric=None,
                      TF_msk_geometric=None,
+                     TF_uv_geometric=None,
                      TF_poi_geometric=None,
                      geometric_same=True,
                      seed=42):
@@ -179,6 +241,7 @@ def apply_transforms(img, mask, poi=None, nonzeros=None,
            (TF_img_geometric is not None and TF_msk_geometric is not None)
     assert TF_poi_geometric is not None and poi is not None and nonzeros is not None or \
            TF_poi_geometric is None
+    assert uv is None  or uv is not None and TF_uv_geometric is not None
 
     # Convert temporally to specific dtype:
     img_dtype, mask_dtype = img.dtype, mask.dtype
@@ -201,6 +264,12 @@ def apply_transforms(img, mask, poi=None, nonzeros=None,
             mask = mask.unsqueeze(0)
         mask = TF_msk_geometric(mask)
 
+    # Transform UV-mask with the same seed:
+    if uv is not None:
+        if geometric_same:
+            torch.manual_seed(seed)
+        uv = TF_uv_geometric(uv)
+
     # Transform PoI with the same seed:
     if geometric_same:
         torch.manual_seed(seed)
@@ -212,7 +281,7 @@ def apply_transforms(img, mask, poi=None, nonzeros=None,
     img = img.to(dtype=img_dtype)
     mask = mask.to(dtype=mask_dtype)
 
-    return img, mask, poi, nonzeros
+    return img, mask, uv, poi, nonzeros
 
 
 if __name__ == '__main__':

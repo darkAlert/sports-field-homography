@@ -9,7 +9,10 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 
-from utils.augmentation import make_apperance_transform, make_geometric_transform, make_points_transform, apply_transforms
+from utils.augmentation import make_apperance_transform, make_geometric_transform, make_points_transform, \
+    make_uv_geometric_transform, apply_transforms
+
+MAX_VALUE_UINT16 = np.iinfo(np.uint16).max
 
 
 def worker_init_fn(worker_id):
@@ -95,19 +98,21 @@ def open_court_poi(path, batch_size=1, normalize=True, homogeneous=False):
 
 class BasicDataset(Dataset):
     def __init__(self, ids, img_dir, mask_dir=None, anno_dir=None, anno_keys=None,
-                 num_classes=1, target_size=(1280,720), aug=None, keep_orig_img=False):
+                 num_classes=1, use_uv=False, target_size=(1280,720), aug=None, keep_orig_img=False):
         self.img_dir = img_dir
         self.mask_dir = mask_dir
         self.anno_dir = anno_dir
         self.ids = ids
         self.target_size = target_size
         self.num_classes = num_classes
+        self.use_uv = use_uv
         self.aug = aug
         self.anno_keys = anno_keys
         self.keep_orig_img = keep_orig_img
         self.TF_apperance = None
         self.TF_img_geometric = None
         self.TF_msk_geometric = None
+        self.TF_uv_geometric = None
         self.TF_poi_geometric = None
 
         assert anno_dir != None and anno_keys != None or anno_dir == None
@@ -125,6 +130,12 @@ class BasicDataset(Dataset):
                                                                  target_size[0],
                                                                  target_size[1],
                                                                  Image.NEAREST)
+                if self.use_uv:
+                    self.TF_uv_geometric = make_uv_geometric_transform(self.aug['geometric'],
+                                                                       target_size[0],
+                                                                       target_size[1],
+                                                                       Image.NEAREST)
+
                 if anno_keys is not None and 'poi' in anno_keys:
                     self.TF_poi_geometric = make_points_transform(self.aug['geometric'])
 
@@ -156,6 +167,22 @@ class BasicDataset(Dataset):
         mask_tensor = torch.from_numpy(mask_nd).type(torch.LongTensor)
 
         return mask_tensor
+
+    @staticmethod
+    def preprocess_uv_mask(uv_mask : np.array, target_size):
+        assert uv_mask.dtype == np.uint16
+
+        uv_mask = cv2.resize(uv_mask, dsize=target_size, interpolation=cv2.INTER_NEAREST)
+
+        # Split uv_mask into segmentation mask, u and v:
+        mask = (uv_mask[:, :, 0]).astype(np.uint8)
+        uv = (uv_mask[:, :, 1:3] / float(MAX_VALUE_UINT16)).astype(np.float32)
+        uv = uv.transpose((2, 0, 1))  # HWC to CHW
+
+        mask_tensor = torch.from_numpy(mask).type(torch.LongTensor)
+        uv_tensor = torch.from_numpy(uv).type(torch.FloatTensor)
+
+        return mask_tensor, uv_tensor
 
     @staticmethod
     def preprocess_poi(np_poi):
@@ -194,8 +221,10 @@ class BasicDataset(Dataset):
 
         # Get image and mask paths:
         img_file = glob(os.path.join(self.img_dir, name))
-        mask_file = glob(os.path.join(self.mask_dir, name_wo_ext + '.png')) if self.mask_dir is not None else None
         anno_file = glob(os.path.join(self.anno_dir, name_wo_ext + '.json')) if self.anno_dir is not None else None
+        ext = '.tif' if self.use_uv else '.png'
+        mask_file = glob(os.path.join(self.mask_dir, name_wo_ext + ext)) if self.mask_dir is not None else None
+
         assert len(img_file) == 1, \
             'Either no image or multiple images found for the ID {}: {}'.format(name, img_file)
         assert mask_file is None or len(mask_file) == 1, \
@@ -203,14 +232,19 @@ class BasicDataset(Dataset):
         assert anno_file is None or len(anno_file) == 1, \
             'Either no json or multiple json found for the ID {}: {}'.format(name_wo_ext + '.json', anno_file)
 
-        # Open image and mask:
+        # Open and preprocess an image:
         orig_img = Image.open(img_file[0])
         assert orig_img is not None
-        mask = Image.open(mask_file[0]) if mask_file is not None else None
-
-        # Preprocess image and mask:
         img = self.preprocess_img(orig_img, self.target_size)
-        mask = self.preprocess_mask(mask, self.target_size) if mask is not None else None
+
+        # Open and preprocess a mask:
+        mask, uv = None, None
+        if self.use_uv:
+            uv_mask = cv2.imread(mask_file[0], -1)
+            mask, uv = self.preprocess_uv_mask(uv_mask, self.target_size)
+        elif mask_file is not None:
+            mask = Image.open(mask_file[0])
+            mask = self.preprocess_mask(mask, self.target_size)
 
         # Open and preprocess annotations:
         poi, nonzeros, num_nonzero = None, None, None
@@ -228,19 +262,25 @@ class BasicDataset(Dataset):
 
         # Augmentation:
         if self.aug is not None:
-            img, mask, poi, nonzeros = apply_transforms(img, mask, poi, nonzeros,
-                                                        self.TF_apperance,
-                                                        self.TF_img_geometric,
-                                                        self.TF_msk_geometric,
-                                                        self.TF_poi_geometric,
-                                                        seed=np.random.randint(2147483647))
+            img, mask, uv, poi, nonzeros = apply_transforms(
+                img, mask, uv, poi, nonzeros,
+                self.TF_apperance,
+                self.TF_img_geometric,
+                self.TF_msk_geometric,
+                self.TF_uv_geometric,
+                self.TF_poi_geometric,
+                seed=np.random.randint(2147483647)
+            )
 
+        # [1,h,w] -> [h,w]:
         if mask is not None and mask.ndim == 3:
-            mask = mask.squeeze(0)        # [1,h,w] -> [h,w]
+            mask = mask.squeeze(0)
 
         sample['image'] = img
         if mask is not None:
             sample['mask'] = mask
+        if uv is not None:
+            sample['uv'] = uv
         if poi is not None:
             sample['poi'] = poi
         if poi is not None:

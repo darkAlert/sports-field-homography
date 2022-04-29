@@ -10,6 +10,7 @@ class Input(Enum):
     IMG = 1
     MASK = 2
     IMG_AND_MASK = 3
+    IMG_AND_MASK_AND_UV = 4
 
     @classmethod
     def parse(cls, input):
@@ -21,6 +22,8 @@ class Input(Enum):
             return cls.MASK
         elif input == 'img+mask':
             return cls.IMG_AND_MASK
+        elif input == 'img+mask+uv':
+            return cls.IMG_AND_MASK_AND_UV
         else:
             raise NotImplementedError
 
@@ -36,6 +39,7 @@ class Reconstructor(nn.Module):
                  use_unet = True,
                  unet_bilinear = False,
                  unet_size = (640, 360),
+                 unet_uv = False,
                  use_resnet = True,
                  resnet_name = 'resnet34',
                  resnet_input = 'img+mask',
@@ -54,6 +58,7 @@ class Reconstructor(nn.Module):
         self.mask_classes = mask_classes
         self.use_unet = use_unet
         self.unet_size = unet_size
+        self.unet_uv = unet_uv
         self.use_resnet = use_resnet
         self.resnet_input = Input.parse(resnet_input)
 
@@ -71,6 +76,7 @@ class Reconstructor(nn.Module):
             self.up3 = Up(256, 128 // factor, unet_bilinear)
             self.up4 = Up(128, 64, unet_bilinear)
             self.outc = OutConv(64, mask_classes)
+            self.outuv = OutConv(64, 2) if unet_uv else None
 
         # ResNetSTN outputs the 3x3 transformation matrix:
         if self.use_resnet:
@@ -83,6 +89,9 @@ class Reconstructor(nn.Module):
             elif self.resnet_input == Input.IMG_AND_MASK:
                 assert self.use_unet
                 in_classes = mask_classes+3
+            elif self.resnet_input == Input.IMG_AND_MASK_AND_UV:
+                assert self.use_unet and self.unet_uv
+                in_classes = mask_classes+3+2  # 3 - RGB Image, 2 - UV-channels
             else:
                 assert False
             self.resnet_reg = resnet_stn(resnet_name, resnet_pretrained, in_classes)
@@ -93,9 +102,9 @@ class Reconstructor(nn.Module):
             h, w = warp_size[1], warp_size[0]
             if warp_with_nearest is True:
                 # It seems mode='nearest' has a bug when used during training
-                self.warper = kornia.HomographyWarper(h, w, mode='nearest', normalized_coordinates=True)
+                self.warper = kornia.geometry.transform.HomographyWarper(h, w, mode='nearest', normalized_coordinates=True)
             else:
-                self.warper = kornia.HomographyWarper(h, w, normalized_coordinates=True)
+                self.warper = kornia.geometry.transform.HomographyWarper(h, w, normalized_coordinates=True)
 
     def warp(self, theta, court_img):
         '''
@@ -136,13 +145,17 @@ class Reconstructor(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
+        uv = self.outuv(x) if self.outuv is not None else None
 
         # Fit output size:
         if logits.shape[3] != self.target_size[0] or logits.shape[2] != self.target_size[1]:
             w,h = self.target_size[:]
             logits = F.interpolate(logits,size=(h,w), mode='nearest')
+        if uv is not None and (uv.shape[3] != self.target_size[0] or uv.shape[2] != self.target_size[1]):
+            w,h = self.target_size[:]
+            uv = F.interpolate(uv,size=(h,w), mode='nearest')
 
-        return logits, x_top
+        return logits, x_top, uv
 
     def forward(self, x):
         '''
@@ -152,7 +165,9 @@ class Reconstructor(nn.Module):
 
         # UNet:
         if self.use_unet:
-            ret['logits'], _ = self.forward_unet(x)
+            ret['logits'], _, uv = self.forward_unet(x)
+            if uv is not None:
+                ret['uv'] = uv
 
         # ResNetSTN:
         if self.use_resnet:
@@ -162,6 +177,8 @@ class Reconstructor(nn.Module):
                 y = ret['logits']
             elif self.resnet_input == Input.IMG_AND_MASK:
                 y = torch.cat((ret['logits'], x), 1)
+            elif self.resnet_input == Input.IMG_AND_MASK_AND_UV:
+                y = torch.cat((ret['logits'], x, ret['uv']), 1)
             else:
                 raise NotImplementedError
 
@@ -185,7 +202,7 @@ class Reconstructor(nn.Module):
 
         # UNet:
         if self.use_unet:
-            ret['logits'], _ = self.forward_unet(x)
+            ret['logits'], _, _ = self.forward_unet(x)
 
         # ResNetSTN:
         if self.use_resnet:

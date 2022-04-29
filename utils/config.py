@@ -57,13 +57,15 @@ def make_base_parser():
                         help="Use bilinear interpolation (True) or deconvolution (False) layers")
     parser.add_argument('--mask_classes', dest='mask_classes', type=int, default=4,
                         help='Number of segmentation mask classes')
+    parser.add_argument('--unet_uv', action='store_true', default=False,
+                        help="Does UNET need to generate a UV-mask or not")
 
     # Regression (ResNetSTN):
     parser.add_argument('--use_resnet', action='store_true', default=True,
                         help="Whether to use ResNetSTN or not")
     parser.add_argument('--resnet_name', type=str, default='resnet34',
                         help='Specify ResNetSTN model (resnet18, resnet34, resnet50, etc.)')
-    parser.add_argument('--resnet_input', type=str, default='resnet34',
+    parser.add_argument('--resnet_input', type=str, default='img+mask',
                         help='Specify type of input data. Can be \'img / mask / img+mask\'')
     parser.add_argument('--use_warper', action='store_true', default=True,
                         help="Whether to warp the court mask with homography or not")
@@ -115,6 +117,8 @@ def get_training_args(ret_parser=False):
     # Losses:
     parser.add_argument('--rec_loss', type=str, default='MSE',
                         help='Whether to use MSE or SmoothL1 as reconstruction loss')
+    parser.add_argument('--uv_loss', type=str, default='MSE',
+                        help='Whether to use MSE or SmoothL1 as UV loss')
     parser.add_argument('--seg_loss', type=str, default='CE',
                         help='Segmentation loss. Can be \'CE\' (Cross Entropy) or \'focal\' (Focal loss)')
     parser.add_argument('--reproj_loss', type=str, default=None,
@@ -123,11 +127,13 @@ def get_training_args(ret_parser=False):
                         help='Whether to use Consistency loss or not. Can be CE/focal or None')
     parser.add_argument('--consist_start_iter', type=int, default=0,
                         help='The iteration number when the consistency loss starts applying')
-    parser.add_argument('--seg_lambda', type=float, default=1.0,
+    parser.add_argument('--seg_lambda', type=float, default=2.0,
                         help='Weighting factor for segmentation loss')
-    parser.add_argument('--rec_lambda', type=float, default=10.0,
+    parser.add_argument('--rec_lambda', type=float, default=2.0,
                         help='Weighting factor for reconstruction loss')
-    parser.add_argument('--reproj_lambda', type=float, default=1.0,
+    parser.add_argument('--uv_lambda', type=float, default=2.0,
+                        help='Weighting factor for UV loss')
+    parser.add_argument('--reproj_lambda', type=float, default=8.0,
                         help='Weighting factor for Reprojection loss')
     parser.add_argument('--consist_lambda', type=float, default=1.0,
                         help='Weighting factor for Consistency loss')

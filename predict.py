@@ -79,7 +79,7 @@ class Workers():
     @staticmethod
     def transfer_gpu_to_cpu(queues, events, req_outputs, mask_classes=4):
         '''
-        Tranfer the data from GPU to CPU
+        Transfer the data from GPU to CPU
         '''
         while True:
             try:
@@ -142,6 +142,7 @@ def process(num_data_workers=4):
 
     # Replace params with ones from yaml config (if it is given):
     if args.conf_path is not None:
+        print ('Reading params from {}...'.format(args.conf_path))
         conf = parse_config(args.conf_path)
         ignore_keys = ['conf_path', 'batchsize', 'court_img', 'court_poi', 'img_dir', 'court_size', 'warp_size', 'load']
         args = replace_args(args, conf, ignore_keys=ignore_keys)
@@ -214,7 +215,7 @@ def process(num_data_workers=4):
         # ids, _ = split_on_train_val(args.img_dir, val_names=[])
         ids = [name for name in os.listdir(args.img_dir) if os.path.isfile(os.path.join(args.img_dir, name))]
         data = BasicDataset(ids, args.img_dir, None, None, None,
-                            args.mask_classes, args.target_size, keep_orig_img=keep_orig_img)
+                            args.mask_classes, use_uv=False, target_size=args.target_size, keep_orig_img=keep_orig_img)
         data_loader = DataLoader(data, batch_size=args.batchsize, shuffle=False,
                                  num_workers=num_data_workers, pin_memory=True, drop_last=False)
         n_data = len(data)
@@ -268,7 +269,7 @@ def process(num_data_workers=4):
                     continue
             pbar.update(len(preds['name']))
 
-            # Apply post-processing to results:
+            # Apply post-processing to the results:
             segm_mask, warp_mask, theta, consist_score, poi = None, None, None, None, None
 
             # Get raw predictions:
@@ -377,6 +378,8 @@ def process(num_data_workers=4):
                     if poi is not None:
                         img_H, img_W = orig_img.shape[0:2]
                         for pi, pts in enumerate(poi[i]):
+                            if pts[0] < 0 or pts[0] >= img_W or pts[1] < 0 or pts[0] >= img_H:
+                                continue
                             x, y = int(round(pts[0] * img_W)), int(round(pts[1] * img_H))
                             debug_img = cv2.circle(debug_img, (x, y), 3, color=(255,255,255), thickness=2)
                             draw_text(debug_img, text=str(pi), pos=(x+3, y+3), color=(128, 128, 255), scale=1)

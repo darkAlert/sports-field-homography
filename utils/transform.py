@@ -6,7 +6,7 @@ import kornia
 
 class Warper:
     def __init__(self, size, cuda=True):
-        self.warper = kornia.HomographyWarper(size[1], size[0], mode='nearest', normalized_coordinates=True)
+        self.warper = kornia.geometry.transform.HomographyWarper(size[1], size[0], mode='nearest', normalized_coordinates=True)
         self.device = torch.device('cuda' if cuda and torch.cuda.is_available() else 'cpu')
 
     def warp(self, theta, proj):

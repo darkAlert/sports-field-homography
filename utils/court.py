@@ -99,3 +99,32 @@ def load_court_poi(path, normalize=True, homogeneous=False):
     return points
 
 
+def generate_uv_template(size, dtype=np.float32, x_offset=(0,0), y_offset=(0,0)):
+    '''
+    Generate UV tempalte:
+    '''
+    if dtype in [np.float32, np.float64, float]:
+        start_u = 1.0 / size[0]
+        start_v = 1.0 / size[1]
+        stop_u, stop_v = 1, 1
+    elif dtype in [np.uint16, np.int16]:
+        start_u, start_v = 1, 1
+        stop_u, stop_v = size[:]
+    else:
+        raise NotImplementedError
+
+    grid_u, grid_v = np.meshgrid(
+        np.linspace(start_u, stop_u, num=size[0], dtype=dtype),
+        np.linspace(start_v, stop_v, num=size[1], dtype=dtype),
+    )
+
+    # Apply offsets:
+    u = np.zeros(grid_u.shape, dtype=dtype)
+    v = np.zeros(grid_v.shape, dtype=dtype)
+    x1, x2 = x_offset[0], size[0] - x_offset[1] - 1
+    y1, y2 = y_offset[0], size[1] - y_offset[1] - 1
+    u[y1:y2, x1:x2] = grid_u[y1:y2, x1:x2]
+    v[y1:y2, x1:x2] = grid_v[y1:y2, x1:x2]
+
+    return u.astype(dtype), v.astype(dtype)
+

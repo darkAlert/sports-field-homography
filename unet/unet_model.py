@@ -143,7 +143,7 @@ class CourtReconstruction(nn.Module):
 
         # Warper:
         h, w = target_size[1], target_size[0]
-        self.warper = kornia.HomographyWarper(h, w)#, mode='nearest')
+        self.warper = kornia.geometry.transform.HomographyWarper(h, w)#, mode='nearest')
 
     def stn(self, x, template):
         xl = self.conv_reg(x)

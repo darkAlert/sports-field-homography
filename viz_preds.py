@@ -92,7 +92,7 @@ def vizualize(video_path, preds_path, dst_dir, field_path, masks_path=None,
 
     # Load the court template image:
     court_img = open_court_template(field_path, mask_classes, (out_W, out_H), 1)
-    warper = kornia.HomographyWarper(out_H, out_W, mode='nearest', normalized_coordinates=True)
+    warper = kornia.geometry.transform.HomographyWarper(out_H, out_W, mode='nearest', normalized_coordinates=True)
 
     temp_dir = os.path.join(dst_dir, '_temp')
     if os.path.exists(temp_dir):

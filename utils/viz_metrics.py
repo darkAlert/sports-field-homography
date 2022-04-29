@@ -236,4 +236,4 @@ if __name__ == "__main__":
     dst_dir = '/home/darkalert/builds/sports-field-homography/checkpoints/pitch/charts/'
     dst_dir = os.path.join(dst_dir, target_dataset)
 
-    vizualize_metrics(src_dir, dst_dir, target_dataset, max_reproj_px=None, show=False)
+    vizualize_metrics(src_dir, dst_dir, target_dataset, max_reproj_px=20, show=False)

@@ -141,7 +141,7 @@ def vizualize_poi(theta, court_poi, imgs):
 
 def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=True):
     """Evaluation UNet+ResNetReg"""
-    ce_score, rec_score, reproj_score, reproj_px, consist_score = 0, 0, 0, 0, 0
+    ce_score, rec_score, reproj_score, reproj_px, consist_score, uv_score = 0, 0, 0, 0, 0, 0
     imgs, logits, rec_masks = None, None, None
     mask_type = torch.long
     n_val = len(loader)
@@ -155,6 +155,8 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
             imgs = batch['image'].to(device=device, dtype=torch.float32)
             gt_masks_i = batch['mask'].to(device=device, dtype=mask_type)
             gt_masks_f = gt_masks_i.to(dtype=torch.float32) / float(net.mask_classes)
+            if net.unet_uv:
+                gt_uv = batch['uv'].to(device=device)
             gt_poi, nonzeros, num_nonzero = None, None, None
             if 'poi' in batch:
                 gt_poi = batch['poi'].to(device=device, dtype=torch.float32)
@@ -163,7 +165,7 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
             counter += imgs.shape[0]
 
             preds = net(imgs)
-            logits, theta, poi, warp_mask = None, None, None, None
+            logits, theta, poi, warp_masks, uv = None, None, None, None, None
             if 'logits' in preds:
                 logits = preds['logits']
             if 'theta' in preds:
@@ -172,6 +174,8 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
                 poi = preds['poi']
             if 'warp_mask' in preds:
                 warp_masks = preds['warp_mask']
+            if 'uv' in preds:
+                uv = preds['uv']
 
             # Scores:
             if use_per_sample_weights:
@@ -182,11 +186,16 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
                 if warp_masks is not None:
                     params = [F.mse_loss, warp_masks, gt_masks_f, gt_weights]
                     rec_score += per_sample_weighted_criterion(*params).item()
+                if uv is not None:
+                    params = [F.mse_loss, uv, gt_uv, gt_weights]
+                    uv_score += per_sample_weighted_criterion(*params).item()
             else:
                 if logits is not None:
                     ce_score += F.cross_entropy(logits, gt_masks_i).item()
                 if warp_masks is not None:
                     rec_score += F.mse_loss(warp_masks, gt_masks_f).item()
+                if uv is not None:
+                    uv_score += F.mse_loss(uv, gt_uv).item()
 
             # Calculate the Consistency error beteween the predicted mask and the projected:
             if logits is not None and warp_masks is not None:
@@ -209,6 +218,7 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
 
     result = {'val_seg_score': ce_score/n_val,
               'val_rec_score': rec_score/n_val,
+              'val_uv_score': uv_score / n_val,
               'val_reproj_score': reproj_score/counter,
               'val_reproj_px': reproj_px/counter,
               'val_consist_score': consist_score/n_val}
@@ -217,6 +227,8 @@ def eval_reconstructor(net, loader, device, target_size, use_per_sample_weights=
         result['logits'] = logits.cpu()
     if warp_masks is not None:
         result['warp_masks'] = warp_masks.cpu()
+    if uv is not None:
+        result['uv_masks'] = uv.cpu()
     # vizualize_poi(theta, net.court_poi, imgs)
 
     return result
